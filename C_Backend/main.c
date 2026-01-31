@@ -47,6 +47,9 @@ void dequeueRequest();
 struct BST* insertBST(struct BST*, int);
 int searchBST(struct BST*, int);
 
+/* Helper Function */
+struct Student* findStudentByRoll(int);
+
 /*================= MAIN FUNCTION =================*/
 int main() {
     int choice;
@@ -87,7 +90,7 @@ void insertStudent() {
     printf("Enter Roll Number: ");
     scanf("%d", &newNode->roll);
     printf("Enter Name: ");
-    scanf("%[^\n]", newNode->name);
+    scanf(" %49[^\n]", newNode->name);
     printf("Enter Marks: ");
     scanf("%f", &newNode->marks);
 
@@ -154,10 +157,16 @@ void searchStudent() {
     printf("Enter roll number to search: ");
     scanf("%d", &roll);
 
-    if (searchBST(root, roll))
-        printf("Student found.\n");
-    else
+    struct Student *s = findStudentByRoll(roll);
+    if (s == NULL) {
         printf("Student not found.\n");
+        return;
+    }
+
+    printf("\nStudent Found:\n");
+    printf("Roll : %d\n", s->roll);
+    printf("Name : %s\n", s->name);
+    printf("Marks: %.2f\n", s->marks);
 }
 
 /* ================= UNDO DELETE ================= */
@@ -237,4 +246,14 @@ int searchBST(struct BST *node, int roll) {
     if (roll < node->roll)
         return searchBST(node->left, roll);
     return searchBST(node->right, roll);
+}
+
+/* ================= FIND STUDENT BY ROLL ================= */
+struct Student* findStudentByRoll(int roll) {
+    struct Student *cur = head;
+    while (cur != NULL) {
+        if (cur->roll == roll) return cur;
+        cur = cur->next;
+    }
+    return NULL;
 }
