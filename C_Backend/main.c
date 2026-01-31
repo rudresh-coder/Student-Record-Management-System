@@ -46,6 +46,7 @@ void dequeueRequest();
 /* BST */
 struct BST* insertBST(struct BST*, int);
 int searchBST(struct BST*, int);
+struct BST* deleteBST(struct BST*, int);
 
 /* Helper Function */
 struct Student* findStudentByRoll(int);
@@ -87,8 +88,20 @@ int main() {
 void insertStudent() {
     struct Student *newNode = (struct Student*)malloc(sizeof(struct Student));
 
+    if (newNode == NULL) {
+        printf("Memory allocation failed.\n");
+        return;
+    }
+
     printf("Enter Roll Number: ");
     scanf("%d", &newNode->roll);
+
+    if (searchBST(root, newNode->roll)) {
+        printf("Roll number %d already exists. Insertion cancelled.\n", newNode->roll);
+        free(newNode);
+        return;
+    }
+
     printf("Enter Name: ");
     scanf(" %49[^\n]", newNode->name);
     printf("Enter Marks: ");
@@ -122,7 +135,14 @@ void deleteStudent() {
 
     /*Pushing to stack for undo*/
     struct Stack *s = (struct Stack*)malloc(sizeof(struct Stack));
-    s->data = *temp;
+    if (s == NULL) {
+        printf("Memory allocation failed.\n");
+        return;
+    }
+    s->data.roll = temp->roll;
+    strcpy(s->data.name, temp->name);
+    s->data.marks = temp->marks;
+    s->data.next = NULL;     // important: do NOT copy list linkage
     s->next = top;
     top = s;
 
@@ -130,6 +150,8 @@ void deleteStudent() {
         head = temp->next;
     else
         prev->next = temp->next;
+
+    root = deleteBST(root, roll);
 
     free(temp);
     printf("Student deleted successfully.\n");
@@ -157,8 +179,13 @@ void searchStudent() {
     printf("Enter roll number to search: ");
     scanf("%d", &roll);
 
+    if (!searchBST(root, roll)) {
+        printf("Student not found.\n");
+        return;
+    }
+
     struct Student *s = findStudentByRoll(roll);
-    if (s == NULL) {
+    if (s == NULL) { // safety if structures are out of sync
         printf("Student not found.\n");
         return;
     }
@@ -177,9 +204,19 @@ void undoDelete() {
     }
 
     struct Student *newNode = (struct Student*)malloc(sizeof(struct Student));
-    *newNode = top->data;
+    if (newNode == NULL) {
+        printf("Memory allocation failed.\n");
+        return;
+    }
+
+    newNode->roll = top->data.roll;
+    strcpy(newNode->name, top->data.name);
+    newNode->marks = top->data.marks;
+
     newNode->next = head;
     head = newNode;
+
+    root = insertBST(root, newNode->roll);  // ISSUE 1 fix
 
     struct Stack *temp = top;
     top = top->next;
@@ -191,8 +228,13 @@ void undoDelete() {
 /* ================= QUEUE OPERATIONS ================= */
 void enqueueRequest() {
     struct Queue *q = (struct Queue*)malloc(sizeof(struct Queue));
+    if (q == NULL) {
+        printf("Memory allocation failed.\n");
+        return;
+    }
+
     printf("Enter request: ");
-    scanf(" %[^\n]", q->request);
+    scanf(" %99[^\n]", q->request); // also add width limit
     q->next = NULL;
 
     if (rear == NULL)
@@ -246,6 +288,40 @@ int searchBST(struct BST *node, int roll) {
     if (roll < node->roll)
         return searchBST(node->left, roll);
     return searchBST(node->right, roll);
+}
+
+static struct BST* minValueNode(struct BST* node) {
+    struct BST* current = node;
+    while (current && current->left != NULL)
+        current = current->left;
+    return current;
+}
+
+struct BST* deleteBST(struct BST* node, int roll) {
+    if (node == NULL) return NULL;
+
+    if (roll < node->roll) {
+        node->left = deleteBST(node->left, roll);
+    } else if (roll > node->roll) {
+        node->right = deleteBST(node->right, roll);
+    } else {
+        // node with 0 or 1 child
+        if (node->left == NULL) {
+            struct BST* temp = node->right;
+            free(node);
+            return temp;
+        } else if (node->right == NULL) {
+            struct BST* temp = node->left;
+            free(node);
+            return temp;
+        }
+
+        // node with 2 children
+        struct BST* temp = minValueNode(node->right);
+        node->roll = temp->roll;
+        node->right = deleteBST(node->right, temp->roll);
+    }
+    return node;
 }
 
 /* ================= FIND STUDENT BY ROLL ================= */
